@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<meta 
+    name="viewport" 
+    content="width=device-width,initial-scale=1, maximum-scale=1,minimum-scale=1,user-scalable=no" 
+    />
+<meta 
+    name="apple-mobile-web-app-capable" 
+    content="yes" 
+    />
+<style>
+    .mblSimpleDialogButton {
+        margin: 7px 0 0;
+        width: 262px;
+        font-size: 17px;
+        font-weight: bold;
+        opacity: 0.95;
+    }
+    /*
+    .myitem {
+        font-weight: normal;
+        font-size: 12px;
+    }
+    .subject {
+        font: bold 16px Helvetica;
+    }
+    .textBox {
+        overflow: hidden;
+    }
+    */
+    .aaa1 {
+        font-size: 15px;
+    }
+    .aaa2 {
+        font-size: 12px;
+    }
+</style>
+<script>
+    dojoConfig = {
+        async: true,
+        parseOnLoad: true,
+    };
+</script>
+<script src="/swmail/jslib/dojox/mobile/deviceTheme.js"></script>
+<script src="/swmail/jslib/dojo/dojo.js"></script>
+<!--
+<script src="//ajax.googleapis.com/ajax/libs/dojo/1.7.2/dojox/mobile/deviceTheme.js"></script>
+<script src="//ajax.googleapis.com/ajax/libs/dojo/1.7.2/dojo/dojo.js"></script>
+-->
+<script>
+
+require([
+    'dojo/ready',
+    'dojo/_base/connect',
+    'dojo/_base/xhr',
+    "dojox/mobile/parser", 
+    'dojo/on',
+    'dojo/query',
+    'dojo/dom',
+    "dojox/mobile/ProgressIndicator",
+    "dojo/_base/window",
+    'dijit/registry',
+    "dojox/mobile",       
+    "dojox/mobile/compat",       
+    "dojox/mobile/TextBox",
+    "dojox/mobile/Button",
+    "dojox/mobile/SimpleDialog",
+    "dojox/mobile/ScrollableView",
+    "dojox/mobile/TabBar",
+], function(ready, connect, xhr, parser, on, query, dom, ProgressIndicator, win, registry) { 
+ 
+    fpShow = function(title, msg){
+        dom.byId('dlg_title').innerHTML = title;
+        dom.byId('dlg_msg').innerHTML = msg;
+        registry.byId('dlg_message').show();
+    }
+
+    fpHide = function(){
+        registry.byId('dlg_message').hide();
+    }
+
+    ready(function(){
+        var v2 = registry.byId('viewFolders');
+        connect.connect(v2, 'onBeforeTransitionIn', null, function(moveTo, dir, transition, context, method){
+            actListFolders();
+        });
+    });
+
+    /*
+    ready(function(){
+        var v3 = registry.byId('view3');
+        connect.connect(v3, 'onBeforeTransitionIn', null, function(moveTo, dir, transition, context, method){
+            actListMessages();
+        });
+    });
+    */
+
+    actListFolders = function() {
+        var x = this;
+        var prog = ProgressIndicator.getInstance();
+        win.body().appendChild(prog.domNode);
+        prog.start();
+        var xhrArgs = {
+            url: '/swmail/listfolders',
+            load: function(response, io) {
+                var viewFolders = registry.byId('viewFolders');
+                viewFolders.destroyDescendants();
+                var container = viewFolders.containerNode;
+                container.innerHTML = response;
+                parser.parse(container);
+                x.transitionTo("viewFolders");
+            },
+            error: function(error) {
+            },
+            handle: function(response, io) {
+                prog.stop();
+            }
+        }
+        xhr.get(xhrArgs);
+    }
+
+    actLogOn = function() {
+        var x = this;
+        var imap_server = dom.byId('imap_server').value;
+        var imap_user = dom.byId('imap_user').value;
+        var imap_pwd = dom.byId('imap_pwd').value;
+        var prog = ProgressIndicator.getInstance();
+        win.body().appendChild(prog.domNode);
+        prog.start();
+        var xhrArgs = {
+            url: '/swmail/logon',
+            content: { 
+                server: imap_server,
+                user: imap_user,
+                pwd: imap_pwd,
+            },
+            load: function(response, io) {
+                if (response == 'OK') {
+                    x.transitionTo("viewFolders");
+                }
+                else {
+                    fpShow('ERROR', response);
+                }
+            },
+            error: function(error) {
+            },
+            handle: function(response, io) {
+                prog.stop();
+            }
+        }
+        xhr.post(xhrArgs);
+    }
+
+    actShowMessage = function() {
+        var listitem = this;
+        // console.log('actShowMessage: ' + listitem.label);
+        // console.log('actShowMessage: ' + listitem.UID);
+        var prog = ProgressIndicator.getInstance();
+        win.body().appendChild(prog.domNode);
+        prog.start();
+        var xhrArgs = {
+            url: '/swmail/showmessage',
+            content: { 
+                uid: listitem.UID,
+            },
+            load: function(response, io) {
+                // console.log('aiueo: ' + response);
+                var view = registry.byId('viewMessage');
+                view.destroyDescendants();
+                var container = view.containerNode;
+                container.innerHTML = response;
+                parser.parse(container);
+                listitem.transitionTo("viewMessage");
+            },
+            error: function(error) {
+                debugger;
+            },
+            handle: function(response, io) {
+                prog.stop();
+            }
+        }
+        xhr.get(xhrArgs);
+    }
+
+    actListMessages = function() {
+        var listitem = this;
+        console.log('actListMessages: ' + listitem.label);
+        var prog = ProgressIndicator.getInstance();
+        win.body().appendChild(prog.domNode);
+        prog.start();
+        var xhrArgs = {
+            url: '/swmail/listmessages',
+            content: { 
+                folder: listitem.label,
+            },
+            load: function(response, io) {
+                var view3 = registry.byId('view3');
+                view3.destroyDescendants();
+                var container = view3.containerNode;
+                container.innerHTML = response;
+                parser.parse(container);
+                listitem.transitionTo("view3");
+            },
+            error: function(error) {
+                debugger;
+            },
+            handle: function(response, io) {
+                prog.stop();
+            }
+        }
+        xhr.get(xhrArgs);
+    }
+
+});
+
+</script>
+</head>
+<body style="visibility:hidden;">
+
+<div 
+    id="view1" 
+    data-dojo-type="dojox.mobile.ScrollableView"
+    >
+    <div 
+        data-dojo-type="dojox.mobile.Heading" 
+        data-dojo-props='label:"Webmail"'
+        >
+        <span 
+            data-dojo-type="dojox.mobile.ToolBarButton" 
+            id='btnLogOn'
+            data-dojo-props='label:"Log On", moveTo:"#", onClick:actLogOn'
+            style="float:right;" 
+            />
+    </div>
+    <h2 data-dojo-type="dojox.mobile.RoundRectCategory">Incoming Mail (IMAP)</h2>
+    <div data-dojo-type="dojox.mobile.RoundRect">
+        <div>
+            Server:
+            <input 
+                data-dojo-type="dojox.mobile.TextBox" 
+                id='imap_server' 
+                value=''
+                />
+        </div>
+        <div>
+            User:
+            <input 
+                data-dojo-type="dojox.mobile.TextBox" 
+                id='imap_user' 
+                value=''
+                />
+        </div>
+        <div>
+            Password:
+            <input 
+                data-dojo-type="dojox.mobile.TextBox" 
+                id='imap_pwd' 
+                value=''
+                />
+        </div>
+    </div>
+    <!--
+    <ul data-dojo-type="dojox.mobile.RoundRectList">
+        <li data-dojo-type="dojox.mobile.ListItem"
+            data-dojo-props='label:"Click me!", onClick:actListFolders, moveTo:"#"'
+        ></li>
+        <li data-dojo-type="dojox.mobile.ListItem"
+            data-dojo-props='label:"Click me!",                         moveTo:"viewFolders"'
+        ></li>
+    </ul>
+    -->
+</div>
+
+<div id="viewFolders" data-dojo-type="dojox.mobile.ScrollableView">
+</div>
+
+<div id="view3" data-dojo-type="dojox.mobile.ScrollableView">
+</div>
+
+<div id="viewMessage" data-dojo-type="dojox.mobile.ScrollableView">
+</div>
+
+<div id="dlg_message" data-dojo-type="dojox.mobile.SimpleDialog">
+    <div id='dlg_title' class="mblSimpleDialogTitle">Information</div>
+    <div id='dlg_msg'  class="mblSimpleDialogText">This is a sample dialog.</div>
+    <button
+        data-dojo-type="dojox.mobile.Button"
+        class="mblSimpleDialogButton"
+        style="width:100px;" onclick="fpHide()">OK</button>
+</div>
+
+<!--
+<button onclick="fpShow('title', 'msg')">Show Dialog</button>
+-->
+
+</body>
+</html>
+
